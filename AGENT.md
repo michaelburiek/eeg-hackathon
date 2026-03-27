@@ -1,0 +1,4 @@
+- [A dataset of EEG recordings from: Alzheimer's disease, Frontotemporal dementia and Healthy subjects](https://openneuro.org/datasets/ds004504/versions/1.0.8)
+- [Exploring EEG: A Beginner's Guide](https://www.kaggle.com/code/yorkyong/exploring-eeg-a-beginner-s-guide/notebook)
+- [BRAINDECODE](https://braindecode.org/stable/index.html)
+-

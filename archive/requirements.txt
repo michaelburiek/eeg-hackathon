@@ -1,0 +1,18 @@
+# LaBraM base dependencies (see LaBraM/requirements.txt)
+timm==0.4.12
+einops
+scipy
+numpy
+h5py
+mne==1.4.2
+pyhealth==1.1.4
+tensorboardX
+Pillow
+requests
+
+# SHAP explainability
+shap
+
+# LLM inference
+transformers
+accelerate

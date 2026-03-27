@@ -1,0 +1,40 @@
+[
+  {
+    "label": "healthy",
+    "prediction_prob": 0.08,
+    "shap_values": [
+      -0.02,
+      0.01,
+      -0.03,
+      -0.01,
+      0.005
+    ],
+    "notes": "Clear rhythms; no major anomalies.",
+    "feature_names": [
+      "alpha_power",
+      "beta_power",
+      "delta_power",
+      "theta_power",
+      "frontal_asymmetry"
+    ]
+  },
+  {
+    "label": "AD",
+    "prediction_prob": 0.87,
+    "shap_values": [
+      0.12,
+      -0.05,
+      0.01,
+      0.9,
+      -0.3
+    ],
+    "notes": "Elevated slow-wave activity; disrupted alpha.",
+    "feature_names": [
+      "alpha_power",
+      "beta_power",
+      "delta_power",
+      "theta_power",
+      "frontal_asymmetry"
+    ]
+  }
+]
