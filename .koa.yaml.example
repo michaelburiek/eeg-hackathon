@@ -1,0 +1,10 @@
+# Project-local koa-cli config for eeg_hackathon.
+# Copy to .koa.yaml and fill in your KOA username.
+# This file overrides ~/.config/koa-cli/config.yaml for this project only.
+#
+# .koa.yaml is gitignored — never commit it.
+
+# Slurm defaults for EEG training jobs
+default_partition: gpu
+default_time: "12:00:00"
+default_gpu: a100           # fallback if auto-GPU finds nothing better

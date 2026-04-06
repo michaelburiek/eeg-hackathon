@@ -1,0 +1,7 @@
+# Copy to ~/.config/koa-cli/config.yaml and update the values.
+user: your_koa_username
+host: koa.its.hawaii.edu
+remote_workdir: ~/koa-jobs
+remote_data_dir: /mnt/lustre/koa/scratch/your_koa_username/koa-jobs
+# identity_file: ~/.ssh/id_ed25519
+# proxy_command: ssh -W %h:%p jump-host.example.edu

@@ -1,0 +1,90 @@
+# ─── LEAD EEGConformer — Train from Scratch ────────────────────────────────────
+# Single config for the entire pipeline.
+# All scripts read this file; override individual values via --override key=value.
+
+project:
+  name: "eeg-lead-from-scratch"
+  seed: 42
+  device: "cuda"            # cuda | mps | cpu
+
+# ─── Paths ────────────────────────────────────────────────────────────────────
+paths:
+  lead_source:      "data/lead/source"     # raw LEAD .dat files (set after download)
+  window_store:     "data/lead/window_store"
+  index_csv:        "data/lead/window_store/index.csv"
+  splits_json:      "data/lead/splits.json"
+  checkpoints_dir:  "experiments/checkpoints"
+  results_dir:      "experiments/results"
+
+# ─── Dataset ──────────────────────────────────────────────────────────────────
+dataset:
+  name: "ADFTD-RS"          # LEAD subset to train on (directory name under lead_source)
+  label_map:                # label string → integer class index
+    CN:  0
+    AD:  1
+    FTD: 2
+
+# ─── Splits ───────────────────────────────────────────────────────────────────
+splits:
+  val_frac:  0.15
+  test_frac: 0.15
+  seed: 42
+
+# ─── Model ────────────────────────────────────────────────────────────────────
+model:
+  name: "eegconformer"
+  n_channels:        19
+  n_classes:         3
+  # EEGConformer architecture
+  n_filters_time:    40
+  filter_time_length: 25
+  pool_time_length:  75
+  pool_time_stride:  15
+  drop_prob:         0.5
+  att_depth:         6
+  att_heads:         10
+  att_drop_prob:     0.5
+  final_fc_length:   "auto"
+
+# ─── Data loading ──────────────────────────────────────────────────────────────
+dataloader:
+  batch_size:     32
+  num_workers:    4
+  pin_memory:     true
+
+# ─── Training ─────────────────────────────────────────────────────────────────
+training:
+  epochs:          50
+  optimizer:       "adamw"
+  lr:              1e-4
+  weight_decay:    0.05
+  betas:           [0.9, 0.999]
+  eps:             1e-8
+  lr_scheduler:    "cosine"
+  warmup_epochs:   5
+  warmup_lr:       1e-6
+  min_lr:          1e-6
+  loss:            "label_smoothing"
+  label_smoothing: 0.1
+  clip_grad:       1.0
+  gradient_accumulation_steps: 1
+  patience:        10           # early stopping patience
+  mode:            "max"        # maximize balanced_accuracy
+
+# ─── Checkpointing ────────────────────────────────────────────────────────────
+checkpointing:
+  save_dir: "experiments/checkpoints"
+
+# ─── Experiment tracking (optional) ──────────────────────────────────────────
+experiment:
+  name: "lead-eegconformer-scratch"
+  model: "eegconformer"
+  mode: "train_from_scratch"
+
+wandb:
+  enabled: false              # set to true and add WANDB_API_KEY to .env to enable
+  project: "eeg-lead"
+  entity: null
+  dir: "experiments/wandb"
+  group_by_experiment: true
+  tags: ["lead", "eegconformer", "from-scratch"]

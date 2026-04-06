@@ -1,9 +1,88 @@
-.claude/
-.DS_Store
+# Environment
+.env
+*.env
+
+# Python
 __pycache__/
 *.py[cod]
-.ipynb_checkpoints/
+*.egg-info/
+dist/
+build/
 .venv/
 venv/
-env/
-data/
+
+# Jupyter
+.ipynb_checkpoints/
+.jupyter/
+
+# Data (large files)
+data/ds004504/
+data/processed/
+data/subject_summaries/
+data/manifests/
+data/window_store/
+data/splits/
+# LEAD binary memmaps (.dat files are large — re-download from DL4mHealth/LEAD)
+data/lead/
+
+# Experiments / checkpoints
+experiments/wandb/
+experiments/checkpoints/
+experiments/pretraining/
+
+# W&B root-level run directory (created when wandb.init runs from repo root)
+wandb/
+
+# Reports (generated)
+reports/subjects/
+reports/pretraining/
+reports/latex/*.aux
+reports/latex/*.log
+reports/latex/*.out
+reports/latex/*.toc
+
+# IDE
+.claude/
+.vscode/
+.idea/
+*.swp
+
+# Testing / local tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local runtime artifacts
+train.log
+train.pid
+eeg-*.out
+eeg-*.err
+
+# koa-cli project-local config (contains cluster username/paths)
+.koa.yaml
+
+# Google Sheets service account key (must never be committed)
+*service_account*.json
+*gsheets*.json
+
+# koa-cli nested artifacts (koa-cli has its own .git; these won't be tracked anyway,
+# but exclude them for clarity if koa-cli/.git is ever removed)
+koa-cli/.venv/
+koa-cli/build/
+koa-cli/*.egg-info/
+koa-cli/__pycache__/
+koa-cli/.pytest_cache/
+koa-cli/.ruff_cache/
+
+# Generated notebook outputs (recreatable)
+data/biomarkers_all_subjects.csv
+data/eeg_biomarker_summaries.csv
+
+# macOS
+**/.DS_Store
+
+# HuggingFace cache
+.cache/
