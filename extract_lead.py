@@ -41,10 +41,7 @@ import mne
 mne.set_log_level('WARNING')
 warnings.filterwarnings('ignore')
 
-from extract_biomarkers import (
-    extract_subject_biomarkers,
-    compute_cn_norms,
-)
+from extract_biomarkers import extract_subject_biomarkers
 
 # Standard 19-channel 10-20 names (LEAD channel order)
 CH_NAMES_19 = [
@@ -63,7 +60,8 @@ LABEL_MAPS = {
 
 def load_lead_dataset(dataset_path: Path, sfreq: float = None):
     """
-    Load a LEAD dataset's metadata, X.dat, and y.dat.
+    Load a LEAD dataset's metadata, X.dat, and y.dat. Filter it to the desired sampling rate.
+    Sampling rates available in meta["SAMPLE_RATE_LIST"] and np.unique(y[:, 2]).
 
     Parameters
     ----------
@@ -114,22 +112,31 @@ def load_lead_dataset(dataset_path: Path, sfreq: float = None):
     return X_filt, y_filt, meta, sfreq, label_map
 
 
-def reconstruct_raw(segments: np.ndarray, sfreq: float, n_channels: int) -> mne.io.Raw:
+def reconstruct_raw(segments: np.ndarray, sfreq: float, n_channels: int,
+                    step: int = None) -> mne.io.Raw:
     """
     Concatenate segments into a continuous signal and wrap as mne.io.RawArray.
 
     Parameters
     ----------
-    segments   : (n_segments, T, C) array
+    segments   : (n_segments, T, C) array, in temporal order
     sfreq      : Sampling rate in Hz
     n_channels : Number of channels
+    step       : Number of non-overlapping samples per segment (from meta STEP).
+                 If None, assumes no overlap (step = T).  With 50% overlap,
+                 pass step = T // 2.
 
     Returns
     -------
     mne.io.Raw
     """
-    # Concatenate: (n_segs, T, C) → (n_segs*T, C) → (C, n_segs*T)
-    continuous = segments.reshape(-1, n_channels).T.astype(np.float64)
+    step = step if step is not None else segments.shape[1]
+
+    # Take only STEP samples from each segment to remove overlapping portions,
+    # then append the full last segment to retain trailing data.
+    pieces = [segments[i, :step, :] for i in range(len(segments) - 1)]
+    pieces.append(segments[-1, :, :])           # last segment: keep all T samples
+    continuous = np.concatenate(pieces, axis=0).T.astype(np.float64)  # (C, total_samples)
 
     ch_names = CH_NAMES_19[:n_channels]
     info = mne.create_info(ch_names=ch_names, sfreq=sfreq, ch_types='eeg')
@@ -145,10 +152,11 @@ def reconstruct_raw(segments: np.ndarray, sfreq: float, n_channels: int) -> mne.
 
 
 def extract_subject(segments: np.ndarray, sfreq: float, n_channels: int,
-                    subject_id, label: int, label_map: dict) -> dict:
+                    subject_id, label: int, label_map: dict,
+                    step: int = None) -> dict:
     """Extract all biomarkers for one subject's concatenated segments."""
-    raw = reconstruct_raw(segments, sfreq, n_channels)
-    rec = extract_subject_biomarkers(raw)
+    raw = reconstruct_raw(segments, sfreq, n_channels, step=step)
+    rec = extract_subject_biomarkers(raw, windowed_complexity=True)
     rec['subject']    = int(subject_id)
     rec['group']      = label_map.get(int(label), str(int(label)))
     rec['n_segments'] = len(segments)
@@ -163,6 +171,7 @@ def extract_all(dataset_path: Path, output_path: Path,
     """
     Run biomarker extraction on a LEAD dataset.
 
+    y: (N, 3) array with columns [label, subject_id, sfreq]
     Parameters
     ----------
     dataset_path  : Path to LEAD dataset directory
@@ -171,30 +180,37 @@ def extract_all(dataset_path: Path, output_path: Path,
     subject_idx   : If set, only process this subject (0-indexed, for SLURM)
     min_duration  : Skip subjects with less than this many seconds of data
     """
-    X, y, meta, sfreq, label_map = load_lead_dataset(dataset_path, sfreq)
-    T, C = meta['T'], meta['C']
 
+    # Load and filter dataset by a sampling frequency
+    X, y, meta, sfreq, label_map = load_lead_dataset(dataset_path, sfreq)
+    T, C, step = meta['T'], meta['C'], meta['STEP']
+
+    # Get unique subject IDs, optionally filtering to a single subject for SLURM array jobs
     subject_ids = np.unique(y[:, 1])
     if subject_idx is not None:
         if subject_idx >= len(subject_ids):
             raise ValueError(f'subject_idx={subject_idx} but only {len(subject_ids)} subjects')
         subject_ids = [subject_ids[subject_idx]]
         print(f'Processing single subject index {subject_idx} (id={int(subject_ids[0])})')
-
+    # For each subject, concatenate their segments and extract biomarkers
     records = []
     skipped = 0
     for sid in tqdm(subject_ids, desc='Extracting', disable=len(subject_ids) == 1):
+        # get particular subject's segments (all rows with matching subject_id in column 1 of y)
         mask = y[:, 1] == sid
         segments = X[mask]   # (n_segs, T, C)
+        # get subject's label (assumes all segments have the same label in column 0 of y)
         label = int(y[mask][0, 0])
 
-        duration = len(segments) * T / sfreq
+        # Calculate total duration of concatenated segments in seconds, accounting for overlap.
+        duration = ((len(segments) - 1) * step + T) / sfreq
         if duration < min_duration:
             skipped += 1
             continue
-
+        
+        # Extract biomarkers for this subject
         try:
-            rec = extract_subject(segments, sfreq, C, sid, label, label_map)
+            rec = extract_subject(segments, sfreq, C, sid, label, label_map, step=step)
             records.append(rec)
         except Exception as e:
             print(f'  Error on subject {int(sid)}: {e}')
@@ -205,18 +221,10 @@ def extract_all(dataset_path: Path, output_path: Path,
     df = pd.DataFrame(records)
     print(f'\nExtracted biomarkers for {len(df)} subjects.')
 
+    # Save to CSV
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False)
     print(f'Saved: {output_path}')
-
-    # Compute CN norms if enough CN subjects
-    cn_mask = df['group'] == 'CN'
-    if cn_mask.sum() >= 2:
-        norms = compute_cn_norms(df)
-        norms_path = output_path.with_name(output_path.stem + '_cn_norms.json')
-        with open(norms_path, 'w') as f:
-            json.dump(norms, f, indent=2)
-        print(f'Saved CN norms: {norms_path}')
 
     return df
 

@@ -193,42 +193,112 @@ def compute_pli(raw, band=(8, 13)):
 
 
 # ── Complexity biomarkers ──────────────────────────────────────────────────────
-def compute_permutation_entropy(raw, order=3, delay=1):
+def compute_permutation_entropy(raw, order=3, delay=1, windowed=False, win_sec=4.0):
     """
     Normalised permutation entropy, averaged across channels.
     Lower = more predictable/regular (AD pattern).
+
+    Parameters
+    ----------
+    raw      : mne.io.Raw
+    order    : Permutation order (default 3).
+    delay    : Embedding delay (default 1).
+    windowed : If True, compute per non-overlapping window then average.
+    win_sec  : Window length in seconds (only used when windowed=True).
+
     Requires the `antropy` package; returns NaN if unavailable.
     """
     try:
         import antropy as ant
-        return float(np.mean([
-            ant.perm_entropy(ch, order=order, delay=delay, normalize=True)
-            for ch in raw.get_data()
-        ]))
+        data = raw.get_data()
+        sfreq = raw.info['sfreq']
+
+        if not windowed:
+            return float(np.mean([
+                ant.perm_entropy(ch, order=order, delay=delay, normalize=True)
+                for ch in data
+            ]))
+
+        win_samples = int(sfreq * win_sec)
+        n_samples = data.shape[1]
+        if n_samples < win_samples:
+            return float(np.mean([
+                ant.perm_entropy(ch, order=order, delay=delay, normalize=True)
+                for ch in data
+            ]))
+
+        pe_per_ch = []
+        for ch in data:
+            wins = [ch[i:i + win_samples] for i in range(0, n_samples - win_samples + 1, win_samples)]
+            pe_per_ch.append(np.mean([
+                ant.perm_entropy(w, order=order, delay=delay, normalize=True)
+                for w in wins
+            ]))
+        return float(np.mean(pe_per_ch))
+
     except ImportError:
         return np.nan
 
 
-def compute_lempel_ziv(raw):
+def compute_lempel_ziv(raw, windowed=False, win_sec=4.0):
     """
     Normalised Lempel-Ziv complexity on the binarised signal (median threshold).
     Lower = more regular/repetitive (AD pattern).
+
+    Parameters
+    ----------
+    raw      : mne.io.Raw
+    windowed : If True, compute per non-overlapping window then average.
+               More robust to signal length and respects quasi-stationarity.
+    win_sec  : Window length in seconds (only used when windowed=True).
+
     Requires the `antropy` package; returns NaN if unavailable.
     """
     try:
         import antropy as ant
-        return float(np.mean([
-            ant.lziv_complexity((ch > np.median(ch)).astype(int), normalize=True)
-            for ch in raw.get_data()
-        ]))
+        data = raw.get_data()
+        sfreq = raw.info['sfreq']
+
+        if not windowed:
+            return float(np.mean([
+                ant.lziv_complexity((ch > np.median(ch)).astype(int), normalize=True)
+                for ch in data
+            ]))
+
+        win_samples = int(sfreq * win_sec)
+        n_samples = data.shape[1]
+        if n_samples < win_samples:
+            # Signal shorter than one window — fall back to whole-signal
+            return float(np.mean([
+                ant.lziv_complexity((ch > np.median(ch)).astype(int), normalize=True)
+                for ch in data
+            ]))
+
+        lzc_per_ch = []
+        for ch in data:
+            wins = [ch[i:i + win_samples] for i in range(0, n_samples - win_samples + 1, win_samples)]
+            lzc_per_ch.append(np.mean([
+                ant.lziv_complexity((w > np.median(w)).astype(int), normalize=True)
+                for w in wins
+            ]))
+        return float(np.mean(lzc_per_ch))
+
     except ImportError:
         return np.nan
 
 
 # ── Convenience: extract all biomarkers from a single Raw ──────────────────────
-def extract_subject_biomarkers(raw) -> dict:
+def extract_subject_biomarkers(raw, windowed_complexity=False) -> dict:
     """
     Run all 11 biomarker extractions on one mne.io.Raw.
+
+    Parameters
+    ----------
+    raw                 : mne.io.Raw
+    windowed_complexity : If True, compute LZC and permutation entropy per
+                          window then average.  Better for long or concatenated
+                          signals; unnecessary if the input is already a short
+                          pre-segmented window.
 
     Returns a dict with keys matching BIOMARKER_KEYS plus individual band powers.
     Caller is responsible for adding metadata (subject, group, age, etc.).
@@ -242,8 +312,8 @@ def extract_subject_biomarkers(raw) -> dict:
         'global_coherence':       compute_coherence_global(raw),
         'pli_alpha':              compute_pli(raw),
         'frontal_posterior_asym':  compute_frontal_posterior_asymmetry(raw),
-        'perm_entropy':           compute_permutation_entropy(raw),
-        'lz_complexity':          compute_lempel_ziv(raw),
+        'perm_entropy':           compute_permutation_entropy(raw, windowed=windowed_complexity),
+        'lz_complexity':          compute_lempel_ziv(raw, windowed=windowed_complexity),
         **{f'{band}_power': val for band, val in bp.items()},
     }
     rec['theta_alpha_ratio'] = bp['theta'] / (bp['alpha'] + 1e-12)

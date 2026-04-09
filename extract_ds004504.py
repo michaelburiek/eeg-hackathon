@@ -14,7 +14,6 @@ Usage
 """
 
 import argparse
-import json
 import warnings
 import numpy as np
 import pandas as pd
@@ -25,12 +24,7 @@ import mne
 mne.set_log_level('WARNING')
 warnings.filterwarnings('ignore')
 
-from extract_biomarkers import (
-    extract_subject_biomarkers,
-    compute_cn_norms,
-    append_zscores,
-    BIOMARKER_KEYS,
-)
+from extract_biomarkers import extract_subject_biomarkers
 
 
 # ── Data loading & preprocessing ──────────────────────────────────────────────
@@ -146,22 +140,6 @@ def extract_all(dataset_root: Path, output_path: Path,
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False)
     print(f'Saved: {output_path}')
-
-    # CN norms + z-scores (skip for single-subject SLURM runs)
-    cn_count = (df['group'] == 'CN').sum()
-    if cn_count >= 2:
-        norms = compute_cn_norms(df)
-        norms_path = output_path.with_name(output_path.stem + '_cn_norms.json')
-        with open(norms_path, 'w') as f:
-            json.dump(norms, f, indent=2)
-        print(f'Saved CN norms: {norms_path}')
-
-        df_z = append_zscores(df, norms)
-        zscores_path = output_path.with_name(output_path.stem + '_with_zscores.csv')
-        df_z.to_csv(zscores_path, index=False)
-        print(f'Saved with z-scores: {zscores_path}')
-    else:
-        print(f'Only {cn_count} CN subject(s) — skipping norms. Run gather step after all jobs.')
 
     return df
 
