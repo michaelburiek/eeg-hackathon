@@ -5,31 +5,29 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --time=00:30:00
 #SBATCH --mem-per-cpu=4G
-#SBATCH --error=./logs/slurm/%A_%a.err
-#SBATCH --output=./logs/slurm/%A_%a.out
+#SBATCH --error=./logs/slurm/%j.err
+#SBATCH --output=./logs/slurm/%j.out
 #SBATCH --mail-user=terrica@hawaii.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 
 # ── Usage ─────────────────────────────────────────────────────────────────────
-# First, count subjects:
-#   python -c "
-#   import numpy as np, json
-#   meta = json.load(open('data/lead/L400/ADFTD-RS/meta.json'))
-#   y = np.fromfile('data/lead/L400/ADFTD-RS/y.dat', dtype=np.float32).reshape(meta['N'],3)
-#   subs = np.unique(y[y[:,2]==200.0, 1])  # at max sfreq
-#   print(f'Submit with: sbatch --array=0-{len(subs)-1} slurm/extract_lead.sbatch')
-#   "
+# One job per dataset (all subjects processed serially):
 #
-# Then submit:
-#   sbatch --array=0-87 slurm/extract_lead.sbatch
-#
-# After all jobs finish, gather:
-#   python slurm/gather.py --input-dir data/ADFTD-RS_biomarkers --out data/ADFTD-RS_biomarkers.csv
+#   sbatch --export=LEAD_DATASET=data/lead/L400/ADFTD-RS  slurm/extract_lead.sbatch
+#   sbatch --export=LEAD_DATASET=data/lead/L400/ADFTD-PS  slurm/extract_lead.sbatch
+#   sbatch --export=LEAD_DATASET=data/lead/L400/ADFTD     slurm/extract_lead.sbatch
+#   sbatch --export=LEAD_DATASET=data/lead/L200/APAVA     slurm/extract_lead.sbatch
+#   sbatch --export=LEAD_DATASET=data/lead/L100/ADSZ      slurm/extract_lead.sbatch
+#   sbatch --export=LEAD_DATASET=data/lead/L100/ADFSU     slurm/extract_lead.sbatch
 
 # ── Config ────────────────────────────────────────────────────────────────────
-# Edit these for your dataset
-LEAD_DATASET="data/lead/L400/ADFTD-RS"
-CONDA_ENV="gcm"
+CONDA_ENV="eeg312"
+
+# Validate LEAD_DATASET was passed
+if [ -z "${LEAD_DATASET}" ]; then
+    echo "ERROR: LEAD_DATASET not set. Submit with --export=LEAD_DATASET=data/lead/L400/ADFTD-RS"
+    exit 1
+fi
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 source /home/terrica/anaconda3/anaconda3/etc/profile.d/conda.sh && conda activate ${CONDA_ENV}
@@ -39,4 +37,4 @@ mkdir -p logs/slurm
 # ── Run ───────────────────────────────────────────────────────────────────────
 python extract_lead.py \
     --dataset ${LEAD_DATASET} \
-    --subject-idx ${SLURM_ARRAY_TASK_ID}
+    --sfreq 100
