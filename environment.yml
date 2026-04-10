@@ -1,0 +1,13 @@
+name: eeg312
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - numpy=1.26.4
+  - scipy=1.17.1
+  - pandas=3.0.2
+  - mne=1.11.0
+  - tqdm=4.67.3
+  - scikit-learn=1.8.0
+  - pip
