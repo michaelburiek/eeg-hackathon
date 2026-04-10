@@ -103,6 +103,11 @@ def compute_slowing_ratio(band_powers):
     return float(slow / (fast + 1e-12))
 
 
+def compute_theta_alpha_ratio(band_powers):
+    """theta / alpha.  Higher = more slowing / cognitive load."""
+    return float(band_powers['theta'] / (band_powers['alpha'] + 1e-12))
+
+
 def compute_pdr(raw, posterior_channels=POSTERIOR_CHANNELS):
     """
     Posterior Dominant Rhythm: spectral peak in 4-14 Hz over posterior
@@ -325,6 +330,7 @@ def extract_subject_biomarkers(raw, windowed_complexity=False) -> dict:
     """
     bp, _, _ = compute_band_powers(raw)
     rec = {
+        'theta_alpha_ratio':      compute_theta_alpha_ratio(bp),
         'pdr_hz':                 compute_pdr(raw),
         'iaf_hz':                 compute_iaf(raw),
         'slowing_ratio':          compute_slowing_ratio(bp),
@@ -336,5 +342,4 @@ def extract_subject_biomarkers(raw, windowed_complexity=False) -> dict:
         'lz_complexity':          compute_lempel_ziv(raw, windowed=windowed_complexity),
         **{f'{band}_power': val for band, val in bp.items()},
     }
-    rec['theta_alpha_ratio'] = bp['theta'] / (bp['alpha'] + 1e-12)
     return rec
