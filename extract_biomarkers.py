@@ -75,7 +75,6 @@ def compute_band_powers(raw, window_sec=4, fmin=0.5, fmax=45):
     # Compute PSD for each channel and store in psd_array (n_channels, n_freqs)
     for ch_data in data:
         _, p = welch(ch_data, fs=sfreq, nperseg=nperseg)
-        print(type(p), p.shape)
         psds.append(p)
 
     # psd array shape: (n_channels, n_freqs)
