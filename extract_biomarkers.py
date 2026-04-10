@@ -108,35 +108,36 @@ def compute_theta_alpha_ratio(band_powers):
     return float(band_powers['theta'] / (band_powers['alpha'] + 1e-12))
 
 
-def compute_pdr(raw, posterior_channels=POSTERIOR_CHANNELS):
+def compute_pdr(raw, posterior_channels=POSTERIOR_CHANNELS, fmin=4, fmax=14, window_sec=4):
     """
-    Posterior Dominant Rhythm: spectral peak in 4-14 Hz over posterior
+    Posterior Dominant Rhythm: spectral peak in fmin-fmax Hz over posterior
     electrodes.  Clinical norm ~9-10 Hz; values < 8 Hz are 'slowed'.
     """
     sfreq     = raw.info['sfreq']
     available = [ch for ch in posterior_channels if ch in raw.ch_names] or raw.ch_names[-4:]
     avg       = raw.copy().pick(available).get_data().mean(axis=0)
-    freqs, psd = welch(avg, fs=sfreq, nperseg=int(sfreq * 4))
-    mask = (freqs >= 4) & (freqs <= 14)
+    freqs, psd = welch(avg, fs=sfreq, nperseg=int(sfreq * window_sec))
+    mask = (freqs >= fmin) & (freqs <= fmax)
     return float(freqs[mask][np.argmax(psd[mask])])
 
 
-def compute_iaf(raw, posterior_channels=POSTERIOR_CHANNELS):
+def compute_iaf(raw, posterior_channels=POSTERIOR_CHANNELS, fmin=7, fmax=13, window_sec=4):
     """
-    Individual Alpha Frequency: spectral centre of gravity in 7-13 Hz over
+    Individual Alpha Frequency: spectral centre of gravity in fmin-fmax Hz over
     posterior electrodes.  More stable than PDR (argmax).
     """
     sfreq     = raw.info['sfreq']
     available = [ch for ch in posterior_channels if ch in raw.ch_names] or raw.ch_names[-4:]
     avg       = raw.copy().pick(available).get_data().mean(axis=0)
-    freqs, psd = welch(avg, fs=sfreq, nperseg=int(sfreq * 4))
-    mask   = (freqs >= 7) & (freqs <= 13)
+    freqs, psd = welch(avg, fs=sfreq, nperseg=int(sfreq * window_sec))
+    mask   = (freqs >= fmin) & (freqs <= fmax)
     f_a, p_a = freqs[mask], psd[mask]
     return float(np.sum(f_a * p_a) / (np.sum(p_a) + 1e-12))
 
 
 def compute_frontal_posterior_asymmetry(raw, frontal_channels=FRONTAL_CHANNELS,
-                                        posterior_channels=POSTERIOR_CHANNELS):
+                                        posterior_channels=POSTERIOR_CHANNELS,
+                                        window_sec=4, fmin=4, fmax=13):
     """
     (theta+alpha) power ratio: frontal / posterior.
 
@@ -152,8 +153,8 @@ def compute_frontal_posterior_asymmetry(raw, frontal_channels=FRONTAL_CHANNELS,
         data = raw.copy().pick(avail).get_data()
         powers = []
         for ch_data in data:
-            f, p = welch(ch_data, fs=sfreq, nperseg=int(sfreq * 4))
-            powers.append(p[(f >= 4) & (f <= 13)].sum())
+            f, p = welch(ch_data, fs=sfreq, nperseg=int(sfreq * window_sec))
+            powers.append(p[(f >= fmin) & (f <= fmax)].sum())
         return float(np.mean(powers))
 
     frontal_p  = _region_power(frontal_channels)
@@ -164,9 +165,10 @@ def compute_frontal_posterior_asymmetry(raw, frontal_channels=FRONTAL_CHANNELS,
 
 
 # ── Connectivity biomarkers ────────────────────────────────────────────────────
-def compute_coherence_posterior(raw, posterior_channels=POSTERIOR_CHANNELS):
+def compute_coherence_posterior(raw, posterior_channels=POSTERIOR_CHANNELS,
+                                window_sec=4, fmin=8, fmax=13):
     """
-    Mean magnitude-squared coherence in 8-13 Hz across posterior electrode pairs.
+    Mean magnitude-squared coherence in fmin-fmax Hz across posterior electrode pairs.
     Reduced in AD (posterior network breakdown).
     """
     sfreq     = raw.info['sfreq']
@@ -177,14 +179,14 @@ def compute_coherence_posterior(raw, posterior_channels=POSTERIOR_CHANNELS):
     cohs = []
     for i in range(len(available)):
         for j in range(i + 1, len(available)):
-            f, coh = coherence(data[i], data[j], fs=sfreq, nperseg=int(sfreq * 4))
-            cohs.append(coh[(f >= 8) & (f <= 13)].mean())
+            f, coh = coherence(data[i], data[j], fs=sfreq, nperseg=int(sfreq * window_sec))
+            cohs.append(coh[(f >= fmin) & (f <= fmax)].mean())
     return float(np.mean(cohs))
 
 
-def compute_coherence_global(raw):
+def compute_coherence_global(raw, window_sec=4, fmin=8, fmax=13):
     """
-    Mean magnitude-squared coherence in 8-13 Hz across ALL channel pairs.
+    Mean magnitude-squared coherence in fmin-fmax Hz across ALL channel pairs.
     Captures whole-brain synchrony.
     """
     sfreq = raw.info['sfreq']
@@ -193,19 +195,19 @@ def compute_coherence_global(raw):
     cohs  = []
     for i in range(n_ch):
         for j in range(i + 1, n_ch):
-            f, coh = coherence(data[i], data[j], fs=sfreq, nperseg=int(sfreq * 4))
-            cohs.append(coh[(f >= 8) & (f <= 13)].mean())
+            f, coh = coherence(data[i], data[j], fs=sfreq, nperseg=int(sfreq * window_sec))
+            cohs.append(coh[(f >= fmin) & (f <= fmax)].mean())
     return float(np.mean(cohs))
 
 
-def compute_pli(raw, band=(8, 13)):
+def compute_pli(raw, band=(8, 13), filter_order=4):
     """
     Mean Phase Lag Index in the alpha band across all channel pairs.
     Robust to volume conduction (unlike magnitude-squared coherence).
     """
     sfreq    = raw.info['sfreq']
     data     = raw.get_data()
-    sos      = butter(4, [band[0], band[1]], btype='band', fs=sfreq, output='sos')
+    sos      = butter(filter_order, [band[0], band[1]], btype='band', fs=sfreq, output='sos')
     filtered = np.array([sosfilt(sos, ch) for ch in data])
     phases   = np.angle(hilbert(filtered, axis=1))
     n_ch     = data.shape[0]
