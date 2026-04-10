@@ -4,18 +4,18 @@ EEG Biomarker Extraction — LEAD dataset adapter
 
 Loads LEAD pre-segmented memmap data (X.dat / y.dat / meta.json),
 reconstructs per-subject continuous signals, wraps them in mne.io.RawArray,
-and runs the same biomarker functions from extract_biomarkers.py.
+and runs the same biomarker functions from src/extract_biomarkers.py.
 
 Usage
 -----
     # All subjects in a LEAD dataset
-    python extract_lead.py --dataset data/lead/L200/APAVA
+    python scripts/biomarkers/extract_lead.py --dataset data/lead/L200/APAVA
 
     # Single subject (for SLURM array)
-    python extract_lead.py --dataset data/lead/L400/ADFTD-RS --subject-idx 5
+    python scripts/biomarkers/extract_lead.py --dataset data/lead/L400/ADFTD-RS --subject-idx 5
 
     # Pick a specific sampling rate (default: highest available)
-    python extract_lead.py --dataset data/lead/L400/ADFTD-RS --sfreq 100
+    python scripts/biomarkers/extract_lead.py --dataset data/lead/L400/ADFTD-RS --sfreq 100
 
 Caveats
 -------
@@ -41,7 +41,7 @@ import mne
 mne.set_log_level('WARNING')
 warnings.filterwarnings('ignore')
 
-from extract_biomarkers import extract_subject_biomarkers
+from src.extract_biomarkers import extract_subject_biomarkers
 
 # Standard 19-channel 10-20 names (LEAD channel order)
 CH_NAMES_19 = [

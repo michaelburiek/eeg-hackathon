@@ -6,7 +6,7 @@ Usage
 -----
     python slurm/gather.py --input-dir data/ADFTD-RS_biomarkers --out data/ADFTD-RS_biomarkers.csv
 
-Then run generate_summaries.py on the merged CSV to compute norms and z-scores.
+Then run scripts/biomarkers/generate_summaries.py on the merged CSV to compute norms and z-scores.
 """
 
 import argparse

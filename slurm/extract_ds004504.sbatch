@@ -29,7 +29,7 @@ mkdir -p logs/slurm data/ds004504_biomarkers
 # ── Run ───────────────────────────────────────────────────────────────────────
 SUBJECT=$(printf "sub-%03d" ${SLURM_ARRAY_TASK_ID})
 
-python extract_ds004504.py \
+python scripts/biomarkers/extract_ds004504.py \
     --dataset ${DATASET_ROOT} \
     --subjects ${SUBJECT} \
     --out data/ds004504_biomarkers/${SUBJECT}.csv

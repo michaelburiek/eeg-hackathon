@@ -13,16 +13,16 @@ pooled data, then produces:
 Usage
 -----
     # Single dataset
-    python generate_summaries.py --input data/ADFTD-RS_biomarkers.csv
+    python scripts/biomarkers/generate_summaries.py --input data/ADFTD-RS_biomarkers.csv
 
     # Multiple datasets pooled (CN norms computed across all)
-    python generate_summaries.py --input data/ADFTD-RS_biomarkers.csv data/APAVA_biomarkers.csv
+    python scripts/biomarkers/generate_summaries.py --input data/ADFTD-RS_biomarkers.csv data/APAVA_biomarkers.csv
 
     # Also write per-subject text summaries
-    python generate_summaries.py --input data/ADFTD-RS_biomarkers.csv --summaries
+    python scripts/biomarkers/generate_summaries.py --input data/ADFTD-RS_biomarkers.csv --summaries
 
     # Use pre-computed norms instead of deriving from CN group
-    python generate_summaries.py --input data/ADFTD-RS_biomarkers.csv --norms data/cn_norms.json
+    python scripts/biomarkers/generate_summaries.py --input data/ADFTD-RS_biomarkers.csv --norms data/cn_norms.json
 """
 
 import argparse
@@ -30,7 +30,7 @@ import json
 import pandas as pd
 from pathlib import Path
 
-from extract_biomarkers import BIOMARKER_KEYS
+from src.extract_biomarkers import BIOMARKER_KEYS
 
 
 # ── CN norms & z-scores ───────────────────────────────────────────────────────

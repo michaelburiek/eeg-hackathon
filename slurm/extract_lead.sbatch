@@ -3,7 +3,7 @@
 #SBATCH --partition=shared
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=00:30:00
+#SBATCH --time=01:00:00
 #SBATCH --mem-per-cpu=4G
 #SBATCH --error=./logs/slurm/%j.err
 #SBATCH --output=./logs/slurm/%j.out
@@ -35,6 +35,6 @@ source /home/terrica/anaconda3/anaconda3/etc/profile.d/conda.sh && conda activat
 mkdir -p logs/slurm
 
 # ── Run ───────────────────────────────────────────────────────────────────────
-python extract_lead.py \
+python scripts/biomarkers/extract_lead.py \
     --dataset ${LEAD_DATASET} \
     --sfreq 100

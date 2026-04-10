@@ -3,7 +3,7 @@
 EEG Biomarker Extraction — shared library
 
 Dataset-agnostic biomarker functions that operate on mne.io.Raw objects.
-Import these from dataset-specific scripts (extract_ds004504.py, extract_lead.py).
+Import these from dataset-specific scripts (scripts/biomarkers/).
 
 Biomarkers
 ----------

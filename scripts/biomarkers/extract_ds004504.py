@@ -3,14 +3,14 @@
 EEG Biomarker Extraction — ds004504 (BIDS / EEGLAB .set)
 
 Loads subjects from the ds004504 dataset (BIDS format, git-annex .set files),
-preprocesses, and extracts biomarkers using extract_biomarkers.py.
+preprocesses, and extracts biomarkers using src/extract_biomarkers.py.
 
 Usage
 -----
-    python extract_ds004504.py                                    # all subjects
-    python extract_ds004504.py --dataset /path/to/ds004504
-    python extract_ds004504.py --subjects sub-001 sub-002         # specific subjects
-    python extract_ds004504.py --out my_biomarkers.csv --duration 180
+    python scripts/biomarkers/extract_ds004504.py                                    # all subjects
+    python scripts/biomarkers/extract_ds004504.py --dataset /path/to/ds004504
+    python scripts/biomarkers/extract_ds004504.py --subjects sub-001 sub-002         # specific subjects
+    python scripts/biomarkers/extract_ds004504.py --out my_biomarkers.csv --duration 180
 """
 
 import argparse
@@ -24,7 +24,7 @@ import mne
 mne.set_log_level('WARNING')
 warnings.filterwarnings('ignore')
 
-from extract_biomarkers import extract_subject_biomarkers
+from src.extract_biomarkers import extract_subject_biomarkers
 
 
 # ── Data loading & preprocessing ──────────────────────────────────────────────
