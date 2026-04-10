@@ -44,9 +44,23 @@ BIOMARKER_KEYS = [
 
 
 # ── Spectral biomarkers ────────────────────────────────────────────────────────
-def compute_band_powers(raw):
+def compute_band_powers(raw, window_sec=4, fmin=0.5, fmax=45):
     """
     Relative band power per frequency band, averaged across all channels.
+
+    Note: This computes relative power per channel first, then averages. The alternative — summing across channels before dividing — would compute global relative power where high-amplitude channels dominate the normalization.
+
+    For example, if one channel has 10x higher amplitude than others, it would drag the denominator up and make every band look weaker. The current approach treats each channel equally regardless of its absolute amplitude.
+
+    Parameters
+    ----------
+    window_sec : float
+        Welch window duration in seconds. Determines frequency resolution
+        (Δf = 1 / window_sec). Default 4s gives Δf = 0.25 Hz.
+    fmin : float
+        Lower frequency bound (Hz) for broadband power normalization. Default 0.5.
+    fmax : float
+        Upper frequency bound (Hz) for broadband power normalization and clipping. Default 45.
 
     Returns
     -------
@@ -56,22 +70,29 @@ def compute_band_powers(raw):
     """
     data  = raw.get_data()
     sfreq = raw.info['sfreq']
-
-    psds, freqs = [], None
+    nperseg = int(sfreq * window_sec)
+    freqs, _ = welch(data[0], fs=sfreq, nperseg=nperseg)
+    psds = []
+    # Compute PSD for each channel and store in psd_array (n_channels, n_freqs)
     for ch_data in data:
-        f, p = welch(ch_data, fs=sfreq, nperseg=int(sfreq * 4))
+        _, p = welch(ch_data, fs=sfreq, nperseg=nperseg)
+        print(type(p), p.shape)
         psds.append(p)
-        freqs = f
 
+    # psd array shape: (n_channels, n_freqs)
     psd_array   = np.array(psds)
-    broad_mask  = (freqs >= 0.5) & (freqs <= 45)
+    broad_mask  = (freqs >= fmin) & (freqs <= fmax)
+    # total_power (n_channels,) Total power of all bands for each channel.
     total_power = psd_array[:, broad_mask].sum(axis=1)
 
     band_powers = {}
     for band, (flo, fhi) in BANDS.items():
+        # the mask selects frequencies within the current band.
         mask = (freqs >= flo) & (freqs <= fhi)
-        bp   = psd_array[:, mask].sum(axis=1)
-        band_powers[band] = float((bp / (total_power + 1e-12)).mean())
+        # band_power (n_channels,) total power of `band` for each channel. We sum across frequencies within the band.
+        band_power  = psd_array[:, mask].sum(axis=1)
+        # band_powers (5,) Division gets relative power per channel. mean() is across channels to get a single value for the band power. `band_powers` is a power for each of the 5 bands
+        band_powers[band] = float((band_power / (total_power + 1e-12)).mean())
 
     return band_powers, freqs, psd_array
 
